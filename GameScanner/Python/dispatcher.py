@@ -6,39 +6,28 @@ from database import checkIfUniverseExists
 class JobDispatcher:
     def __init__(self, targetBatchSize: int = 3):
         self.targetBatchSize = targetBatchSize
-        self.currentIdPointer = 101
-        self.maxIdLimit = 120
-        self.dispatchLock = asyncio.Lock()
+        self.currentIdPointer = 1000000
         
     async def fetchDiscoveryGameIds(self) -> list[int]:
-        #In prod, call roblox discovery apis here
-        #this returns mock IDs atm
-        rawIds = []
-        for _ in range(5):
-            if self.currentIdPointer <= self.maxIdLimit:
-                rawIds.append(self.currentIdPointer)
-                self.currentIdPointer += 1
-        return rawIds
+        batchIds = []
+        for _ in range(self.targetBatchSize * 3):
+            batchIds.append(self.currentIdPointer)
+            self.currentIdPointer += 1
+        return batchIds
     
     async def requestBatchofIds(self) -> list[int]:
-        async with self.dispatchLock:
-            print("[Job Dispatcher] : Received ID queue request. Processing batch...")
-            tempIdStack = []
+        printC("[Job Dispatcher] : Compiling new ID batch for worker...", "cyan")
+        tempIdStack = []
+        rawDiscoveredIds = await self.fetchDiscoveryGameIds()
+        for universeId in rawDiscoveredIds:
+            if len(tempIdStack) >= self.targetBatchSize:
+                break
             
-            # Actually call the discovery method
-            rawDiscoveredIds = await self.fetchDiscoveryGameIds()
-
-            for universeId in rawDiscoveredIds:
-                if len(tempIdStack) >= self.targetBatchSize:
-                    break
-                
-                # Check if already in main DB (Deduplication)
-                exists = await checkIfUniverseExists(universeId)
-                if exists:
-                    print(f"[Job Dispatcher] : ID {universeId} already exists in DB. Skipping.")
-                    continue
-                else:
-                    tempIdStack.append(universeId)
-
-            print(f"[Job Dispatcher] Stack dispatched ({len(tempIdStack)} IDs).")
-            return tempIdStack
+            exists = await checkIfUniverseExists(universeId)
+            if exists:
+                continue
+            else:
+                tempIdStack.append(universeId)
+            
+        printC(f"[Job Dispatcher] : Dispatched batch of {len(tempIdStack)} IDs.", "cyan")
+        return tempIdStack

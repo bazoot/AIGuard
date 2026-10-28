@@ -1,9 +1,10 @@
 import asyncio
 import sys
 import httpx
-from database import checkDatabaseExists, createDatabase, dbFile, insertGameIntoDatabase
+from database import checkDatabaseExists, createDatabase, insertGameIntoDatabase
 from dispatcher import JobDispatcher
 from colours import printC
+from apiClient import RobloxApiClient
 
 async def checkInternetConnection() -> int:
     #check reachability to internet and roblox apis
@@ -14,8 +15,9 @@ async def checkInternetConnection() -> int:
         except Exception:
             return -1 # No Connection code
 
-async def workerNode(workerId: int, dispatcher: JobDispatcher):
+async def workerNode(workerId: int, dispatcher: JobDispatcher, apiClient: RobloxApiClient):
     localQueue = []
+    printC(f"[Worker {workerId}] : Initialised.", "brightMagenta")
     
     while True:
         # check if local queue is empty
@@ -31,23 +33,18 @@ async def workerNode(workerId: int, dispatcher: JobDispatcher):
         universeId = localQueue.pop(0)
         printC(f"[Worker {workerId}] : Processing Universe ID {universeId}", "brightMagenta")
         
-        # Game validation (exists? and public?)
-        # this is a mockup
-        gameValid = True
-        if not gameValid:
-            printC(f"[Worker {workerId}] : ID {universeId} is invalid or private. Skipped", "brightMagenta")
-            continue
+        # Insert Game validation here (exists? and public?)
         
         # Request game details from API
         try:
-            # Placeholder for Cloud v2/games API request
-            await asyncio.sleep(0.3)
+            printC(f"[Worker {workerId}] : Fetching metadata for universe {universeId}.", "brightMagenta")
+            universeData = await apiClient.fetchUniverseDetails(universeId)
             
-            # Write to database
-            mockTitle = f"Mock title {universeId}"
-            mockDescription = f"Mock Description"
-            await insertGameIntoDatabase(universeId, mockTitle, mockDescription)
-            printC(f"[Worker {workerId}] : Successfully stored details for Universe ID {universeId}", "brightMagenta")
+            if universeData:
+                await insertGameIntoDatabase(universeData)
+                printC(f"[Worker {workerId}] : Successfully stored universe {universeId}", "brightMagenta")
+            else:
+                printC(f"[Worker {workerId}] : Skipped invalid or inaccessible universe {universeId}", "brightMagenta")
         except Exception as e:
             printC(f"[Worker {workerId}] : Error processing Universe ID {universeId}: {e}", "brightMagenta")
 
@@ -62,7 +59,7 @@ async def main():
             printC("[System] : Database initialised successfully", "brightGreen")
         except Exception as e:
             printC(f"[System] : Fatal error : DDL failed. Exception {e}", "brightRed")
-            print("[System] : Exiting...", "brightRed")
+            printC("[System] : Exiting...", "brightRed")
             sys.exit(1)
     else:
         print("[System] : Main DB found")
@@ -70,7 +67,7 @@ async def main():
     # Internet Connection Check
     print("[System] : Verifying internet connection...")
     statusCode = await checkInternetConnection()
-    if statusCode > 500:
+    if statusCode < 0 or statusCode >= 500:
         printC(f"[System] : Fatal Exception : No internet connection or unreachable API. Status {statusCode}", "brightRed")
         printC("[System] : Exiting...", "brightRed")
         sys.exit(1)
@@ -78,6 +75,10 @@ async def main():
     
     # Initialise job dispatcher
     jobDispatcher = JobDispatcher(targetBatchSize=3)
+    apiClient = RobloxApiClient()
+    
+    if not apiClient.apiKey:
+        printC("[System] : Warning: ROBLOX_API_KEY environment variable is not set.", "brightRed")
     
     # Spawn parallel workers
     numberOfWorkers = 2
@@ -86,7 +87,7 @@ async def main():
     workerTasks = []
     for i in range(numberOfWorkers):
         workerId = i + 1
-        task = asyncio.create_task(workerNode(workerId, jobDispatcher))
+        task = asyncio.create_task(workerNode(workerId, jobDispatcher, apiClient))
         workerTasks.append(task)
     
     # Run workers concurrently until complete

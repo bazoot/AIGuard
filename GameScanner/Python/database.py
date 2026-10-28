@@ -12,6 +12,7 @@ async def createDatabase():
         await db.execute("""
                          CREATE TABLE IF NOT EXISTS games (
                              universe_id INTEGER PRIMARY KEY,
+                             rootPlaceId INTEGER,
                              title TEXT,
                              description TEXT,
                              thumbnail_url TEXT,
@@ -19,6 +20,8 @@ async def createDatabase():
                              dislikes INTEGER,
                              visits INTEGER,
                              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                             scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                          )
                         """)
         await db.execute("CREATE INDEX IF NOT EXISTS idx_universe_id ON games (universe_id);")
@@ -31,11 +34,34 @@ async def checkIfUniverseExists(universeId: int) -> bool:
             row = await cursor.fetchone()
             return row is not None
         
-async def insertGameIntoDatabase(universeId: int, title: str, description: str):
+async def insertGameIntoDatabase(universeData: dict):
     # Inserts game records into the database
     async with aiosqlite.connect(dbFile) as db:
         await db.execute("""
-                         INSERT OR REPLACE INTO games (universe_id, title, description, updated_at)
-                         VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                         """, (universeId, title, description))
+                         INSERT OR REPLACE INTO games (
+                             universe_id,
+                             rootPlaceId,
+                             title,
+                             description,
+                             thumbnail_url,
+                             likes,
+                             dislikes,
+                             visits,
+                             updated_at,
+                             created_at,
+                             scanned_at
+                             )
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                         """, (
+                             universeData.get("universeId"),
+                             universeData.get("rootPlaceId"),
+                             universeData.get("title"),
+                             universeData.get("description"),
+                             universeData.get("thumbnail_url"),
+                             universeData.get("likes"),
+                             universeData.get("dislikes"),
+                             universeData.get("visits"),
+                             universeData.get("updated_at"),
+                             universeData.get("created_at")
+                         ))
         await db.commit()
