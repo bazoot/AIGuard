@@ -23,7 +23,7 @@ class RobloxApiClient:
         
         if len(self.requestTimestamps) >= self.maxRequestsPerMinute:
             oldestTimestamp = float(self.requestTimestamps[0])
-            sleepTime = self.requestTimestamps - (currentTime - oldestTimestamp) + 0.5
+            sleepTime = self.requestWindowSeconds - (currentTime - oldestTimestamp) + 0.5
             if sleepTime > 0:
                 printC(f"[API Client] : Rate limit approaching - throttling for {sleepTime:.2f} seconds...", "brightBlue")
                 await asyncio.sleep(sleepTime)
@@ -63,15 +63,15 @@ class RobloxApiClient:
                             "created_at": data.get("createTime")
                         }
                     elif response.status_code == 404:
-                        print(f"[API Client] : Universe ID {universeId} not found or private", "brightRed")
+                        printC(f"[API Client] : Universe ID {universeId} not found or private", "brightRed")
                         return None
                     elif response.status_code == 429:
                         waitDuration = backoffFactor ** (attempt + 1)
-                        print(f"[API Client] : Rate limited (429) on universe {universeId}. Retrying in {waitDuration}s...", "brightYellow")
+                        printC(f"[API Client] : Rate limited (429) on universe {universeId}. Retrying in {waitDuration}s...", "brightYellow")
                     else:
-                        print(f"[API Client] : Error HTTP {response.status_code} for universe {universeId}", "brightRed")
+                        printC(f"[API Client] : Error HTTP {response.status_code} for universe {universeId}", "brightRed")
                         return None
                 except Exception as e:
-                    print(f"[API Client] : Exception occured while fetching universe {universeId}: {e}", "brightRed")
+                    printC(f"[API Client] : Exception occured while fetching universe {universeId}: {e}", "brightRed")
                     await asyncio.sleep(1.0)
             return None

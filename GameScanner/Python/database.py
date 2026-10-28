@@ -19,8 +19,8 @@ async def createDatabase():
                              likes INTEGER,
                              dislikes INTEGER,
                              visits INTEGER,
-                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                              scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                          )
                         """)
