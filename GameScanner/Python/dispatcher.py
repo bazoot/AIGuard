@@ -1,31 +1,44 @@
+import asyncio
 import aiosqlite
-import httpx
+from colours import printC
 from database import checkIfUniverseExists
+
 class JobDispatcher:
-    def __init__(self, targetBatchSize: int = 5):
+    def __init__(self, targetBatchSize: int = 3):
         self.targetBatchSize = targetBatchSize
+        self.currentIdPointer = 101
+        self.maxIdLimit = 120
+        self.dispatchLock = asyncio.Lock()
         
     async def fetchDiscoveryGameIds(self) -> list[int]:
         #In prod, call roblox discovery apis here
         #this returns mock IDs atm
-        return [101, 102, 103, 104, 105, 106, 107, 108, 109, 110]
+        rawIds = []
+        for _ in range(5):
+            if self.currentIdPointer <= self.maxIdLimit:
+                rawIds.append(self.currentIdPointer)
+                self.currentIdPointer += 1
+        return rawIds
     
     async def requestBatchofIds(self) -> list[int]:
-        print("[Job Dispatcher] : Recieved ID queue request, Processing batch")
-        tempIdStack = []
-        rawDiscoveredIds = await self.fetchDiscoveryGameIds()
-        
-        for universeId in rawDiscoveredIds:
-            #Check if stack full
-            if len(tempIdStack) >= self.targetBatchSize:
-                break
+        async with self.dispatchLock:
+            print("[Job Dispatcher] : Received ID queue request. Processing batch...")
+            tempIdStack = []
             
-            #Check if already in main db
-            exists = await checkIfUniverseExists(universeId)
-            if exists:
-                continue
-            else:
-                tempIdStack.append(universeId)
+            # Actually call the discovery method
+            rawDiscoveredIds = await self.fetchDiscoveryGameIds()
+
+            for universeId in rawDiscoveredIds:
+                if len(tempIdStack) >= self.targetBatchSize:
+                    break
                 
-        print(f"[Job Dispatcher] : Stack Full ({len(tempIdStack)}) IDs. Queue dispatched to worker")
-        return tempIdStack
+                # Check if already in main DB (Deduplication)
+                exists = await checkIfUniverseExists(universeId)
+                if exists:
+                    print(f"[Job Dispatcher] : ID {universeId} already exists in DB. Skipping.")
+                    continue
+                else:
+                    tempIdStack.append(universeId)
+
+            print(f"[Job Dispatcher] Stack dispatched ({len(tempIdStack)} IDs).")
+            return tempIdStack

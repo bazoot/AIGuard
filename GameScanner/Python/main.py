@@ -3,6 +3,7 @@ import sys
 import httpx
 from database import checkDatabaseExists, createDatabase, dbFile, insertGameIntoDatabase
 from dispatcher import JobDispatcher
+from colours import printC
 
 async def checkInternetConnection() -> int:
     #check reachability to internet and roblox apis
@@ -19,22 +20,22 @@ async def workerNode(workerId: int, dispatcher: JobDispatcher):
     while True:
         # check if local queue is empty
         if not localQueue:
-            print(f"[Worker {workerId}] : Local ID queue empty. Requesting ID queue from dispatcher")
+            printC(f"[Worker {workerId}] : Local ID queue empty. Requesting ID queue from dispatcher", "brightMagenta")
             localQueue = await dispatcher.requestBatchofIds()
             
             if not localQueue:
-                print(f"[Worker {workerId}] : No more IDs available. Worker terminating")
+                printC(f"[Worker {workerId}] : No more IDs available. Worker terminating", "brightMagenta")
                 break
             
         # get next ID
         universeId = localQueue.pop(0)
-        print(f"[Worker {workerId}] : Processing Universe ID {universeId}")
+        printC(f"[Worker {workerId}] : Processing Universe ID {universeId}", "brightMagenta")
         
         # Game validation (exists? and public?)
         # this is a mockup
         gameValid = True
         if not gameValid:
-            print(f"[Worker {workerId}] : ID {universeId} is invalid or private. Skipped")
+            printC(f"[Worker {workerId}] : ID {universeId} is invalid or private. Skipped", "brightMagenta")
             continue
         
         # Request game details from API
@@ -46,9 +47,9 @@ async def workerNode(workerId: int, dispatcher: JobDispatcher):
             mockTitle = f"Mock title {universeId}"
             mockDescription = f"Mock Description"
             await insertGameIntoDatabase(universeId, mockTitle, mockDescription)
-            print(f"[Worker {workerId}] : Successfully stored details for Universe ID {universeId}")
+            printC(f"[Worker {workerId}] : Successfully stored details for Universe ID {universeId}", "brightMagenta")
         except Exception as e:
-            print(f"[Worker {workerId}] : Error processing Universe ID {universeId}: {e}")
+            printC(f"[Worker {workerId}] : Error processing Universe ID {universeId}: {e}", "brightMagenta")
 
 async def main():
     print("[System] : Starting...")
@@ -58,10 +59,10 @@ async def main():
         print("[System] : Database not found. Creating...")
         try:
             await createDatabase()
-            print("[System] : Database initialised successfully")
+            printC("[System] : Database initialised successfully", "brightGreen")
         except Exception as e:
-            print(f"[System] : Fatal error : DDL failed. Exception {e}")
-            print("[System] : Exiting...")
+            printC(f"[System] : Fatal error : DDL failed. Exception {e}", "brightRed")
+            print("[System] : Exiting...", "brightRed")
             sys.exit(1)
     else:
         print("[System] : Main DB found")
@@ -70,10 +71,10 @@ async def main():
     print("[System] : Verifying internet connection...")
     statusCode = await checkInternetConnection()
     if statusCode > 500:
-        print(f"[System] : Fatal Exception : No internet connection or unreachable API. Status {statusCode}")
-        print("[System] : Exiting...")
+        printC(f"[System] : Fatal Exception : No internet connection or unreachable API. Status {statusCode}", "brightRed")
+        printC("[System] : Exiting...", "brightRed")
         sys.exit(1)
-    print(f"[System] : Connection verified with status {statusCode}")
+    printC(f"[System] : Connection verified with status {statusCode}", "brightGreen")
     
     # Initialise job dispatcher
     jobDispatcher = JobDispatcher(targetBatchSize=3)
@@ -90,7 +91,7 @@ async def main():
     
     # Run workers concurrently until complete
     await asyncio.gather(*workerTasks)
-    print("[System] : Scan cycle completed successfully")
+    printC("[System] : Scan cycle completed successfully", "brightGreen", "bold", "underline")
     
 if __name__ == "__main__":
     asyncio.run(main())
