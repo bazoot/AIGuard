@@ -1,8 +1,8 @@
 import asyncio
 import sys
 import httpx
-from database import checkDatabaseExists, createDatabase, dbFile
-from dispatcher import jobDispatcher
+from database import checkDatabaseExists, createDatabase, dbFile, insertGameIntoDatabase
+from dispatcher import JobDispatcher
 
 async def checkInternetConnection() -> int:
     #check reachability to internet and roblox apis
@@ -13,7 +13,7 @@ async def checkInternetConnection() -> int:
         except Exception:
             return -1 # No Connection code
 
-async def workerNode(workerId: int, dispatcher: jobDispatcher):
+async def workerNode(workerId: int, dispatcher: JobDispatcher):
     localQueue = []
     
     while True:
@@ -42,7 +42,10 @@ async def workerNode(workerId: int, dispatcher: jobDispatcher):
             # Placeholder for Cloud v2/games API request
             await asyncio.sleep(0.3)
             
-            # Store details in main db
+            # Write to database
+            mockTitle = f"Mock title {universeId}"
+            mockDescription = f"Mock Description"
+            await insertGameIntoDatabase(universeId, mockTitle, mockDescription)
             print(f"[Worker {workerId}] : Successfully stored details for Universe ID {universeId}")
         except Exception as e:
             print(f"[Worker {workerId}] : Error processing Universe ID {universeId}: {e}")
@@ -66,14 +69,14 @@ async def main():
     # Internet Connection Check
     print("[System] : Verifying internet connection...")
     statusCode = await checkInternetConnection()
-    if statusCode != 200:
+    if statusCode > 500:
         print(f"[System] : Fatal Exception : No internet connection or unreachable API. Status {statusCode}")
         print("[System] : Exiting...")
         sys.exit(1)
     print(f"[System] : Connection verified with status {statusCode}")
     
     # Initialise job dispatcher
-    jobDispatcher = jobDispatcher(targetBatchSize=3)
+    jobDispatcher = JobDispatcher(targetBatchSize=3)
     
     # Spawn parallel workers
     numberOfWorkers = 2

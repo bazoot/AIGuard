@@ -30,3 +30,12 @@ async def checkIfUniverseExists(universeId: int) -> bool:
         async with db.execute("SELECT 1 FROM games WHERE universe_id = ?", (universeId,)) as cursor:
             row = await cursor.fetchone()
             return row is not None
+        
+async def insertGameIntoDatabase(universeId: int, title: str, description: str):
+    # Inserts game records into the database
+    async with aiosqlite.connect(dbFile) as db:
+        await db.execute("""
+                         INSERT OR REPLACE INTO games (universe_id, title, description, updated_at)
+                         VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                         """, (universeId, title, description))
+        await db.commit()

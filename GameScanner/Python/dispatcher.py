@@ -1,7 +1,7 @@
 import aiosqlite
 import httpx
 from database import checkIfUniverseExists
-class jobDispatcher:
+class JobDispatcher:
     def __init__(self, targetBatchSize: int = 5):
         self.targetBatchSize = targetBatchSize
         
