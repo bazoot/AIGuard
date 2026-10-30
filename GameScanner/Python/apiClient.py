@@ -7,6 +7,14 @@ class RobloxApiClient:
     def __init__(self):
         # Retrieve roblox API key from env variables
         self.apiKey = os.getenv("ROBLOX_API_KEY", "")
+        
+        if not self.apiKey and os.path.exists("APIkey.txt"):
+            try:
+                with open("APIkey.txt", "r") as f:
+                    self.apiKey = f.read().strip()
+                printC("[API Client] : Successfully loaded API key", "brightGreen")
+            except Exception as e:
+                printC(f"[API Client] : Error reading APIKey.txt: {e}", "brightRed")
         self.baseUrl = "https://apis.roblox.com"
         # Rate limit tracking: 100 rpm for universes
         self.requestWindowSeconds = 60.0

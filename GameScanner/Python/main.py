@@ -33,8 +33,6 @@ async def workerNode(workerId: int, dispatcher: JobDispatcher, apiClient: Roblox
         universeId = localQueue.pop(0)
         printC(f"[Worker {workerId}] : Processing Universe ID {universeId}", "brightMagenta")
         
-        # Insert Game validation here (exists? and public?)
-        
         # Request game details from API
         try:
             printC(f"[Worker {workerId}] : Fetching metadata for universe {universeId}.", "brightMagenta")
