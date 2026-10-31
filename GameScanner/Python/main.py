@@ -1,7 +1,7 @@
 import asyncio
 import sys
 import httpx
-from database import checkDatabaseExists, createDatabase, insertGameIntoDatabase
+from database import checkDatabaseExists, createDatabase, insertGameIntoDatabase, filterUnplayableGames
 from dispatcher import JobDispatcher
 from colours import printC
 from apiClient import RobloxApiClient
@@ -27,6 +27,7 @@ async def workerNode(workerId: int, dispatcher: JobDispatcher, apiClient: Roblox
             
             if not localQueue:
                 printC(f"[Worker {workerId}] : No more IDs available. Worker terminating", "brightMagenta")
+                await filterUnplayableGames()
                 break
             
         # get next ID
@@ -72,7 +73,7 @@ async def main():
     printC(f"[System] : Connection verified with status {statusCode}", "brightGreen")
     
     # Initialise job dispatcher
-    jobDispatcher = JobDispatcher(targetBatchSize=3)
+    jobDispatcher = JobDispatcher(targetBatchSize=100)
     apiClient = RobloxApiClient()
     
     if not apiClient.apiKey:

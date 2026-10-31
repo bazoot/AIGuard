@@ -1,5 +1,6 @@
 import aiosqlite
 import os
+from colours import printC
 dbFile = "roblox_games.db"
 
 async def checkDatabaseExists() -> bool:
@@ -34,6 +35,18 @@ async def checkIfUniverseExists(universeId: int) -> bool:
             row = await cursor.fetchone()
             return row is not None
         
+async def filterUnplayableGames():
+    async with aiosqlite.connect(dbFile) as db:
+        query = """
+        DELETE FROM GAMES
+        WHERE visits < 100
+            OR description LIKE '%Roblox Studio!%'
+            OR description LIKE '%Roblox%'
+        """
+        cursor = await db.execute(query)
+        await db.commit()
+        printC(f"[Database] : Cleaned up {cursor.rowcount} unplayable or low engagement", "brightGreen")  
+        
 async def insertGameIntoDatabase(universeData: dict):
     # Inserts game records into the database
     async with aiosqlite.connect(dbFile) as db:
@@ -58,9 +71,9 @@ async def insertGameIntoDatabase(universeData: dict):
                              universeData.get("title"),
                              universeData.get("description"),
                              universeData.get("thumbnail_url"),
-                             universeData.get("likes"),
-                             universeData.get("dislikes"),
-                             universeData.get("visits"),
+                             universeData.get("likes", 0),
+                             universeData.get("dislikes", 0),
+                             universeData.get("visits", 0),
                              universeData.get("updated_at"),
                              universeData.get("created_at")
                          ))
